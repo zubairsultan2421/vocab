@@ -1069,7 +1069,7 @@ function addWord() {
     lastReviewed: null,
     recallHistory: []
   });
-  save();
+  save(); drivePushDebounced();
   document.getElementById('inp-word').value = '';
   document.getElementById('inp-context').value = '';
   document.getElementById('inp-sentence').value = '';
@@ -1079,7 +1079,7 @@ function addWord() {
 
 function deleteWord(id) {
   state.words = state.words.filter(w => w.id !== id);
-  save(); renderAll();
+  save(); drivePushDebounced(); renderAll();
 }
 
 function renderBank() {
@@ -1250,7 +1250,7 @@ function submitAnswer() {
   if (w.recallScore >= 80 && prevScore < 80) drillNewMastered++;
   const idx = state.words.findIndex(x => x.id === w.id);
   if (idx !== -1) state.words[idx] = w;
-  save();
+  save(); drivePushDebounced();
 
   // Next button
   const isLast = drillIndex >= drillQueue.length - 1;
@@ -1317,7 +1317,7 @@ function endDrill() {
   if (lastDrill === yesterday) state.streak = (state.streak || 0) + 1;
   else if (lastDrill !== today) state.streak = 1;
   state.lastDrillDate = today;
-  save();
+  save(); drivePushDebounced();
   renderAll();
   showToast('Session logged \u2713');
 }
@@ -1766,12 +1766,7 @@ function showDriveSetupGuide() {
   document.body.appendChild(guide);
 }
 
-// Hook into save() to auto-push after every change
-const _origSave = save;
-function save() {
-  _origSave();
-  drivePushDebounced();
-}
+// Auto-push is called explicitly after each save() — no override needed
 
 // ─── EXPORT / IMPORT ──────────────────────────────────────────────────────────
 function exportData() {
@@ -1809,7 +1804,7 @@ function importData(event) {
       }
       if (Object.keys(state.activityLog).length === 0 && imported.activityLog) state.activityLog = imported.activityLog;
       if (imported.startDate && state.startDate > imported.startDate) state.startDate = imported.startDate;
-      save(); renderAll();
+      save(); drivePushDebounced(); renderAll();
       showToast('Imported ' + added + ' new words');
     } catch(err) { showToast('Failed to read file'); }
     event.target.value = '';
