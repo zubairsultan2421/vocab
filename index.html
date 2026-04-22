@@ -642,6 +642,23 @@
   }
   .swipe-hint.show { opacity: 1; }
 
+
+  /* Drive sync */
+  .drive-status {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 10px; color: var(--muted); padding: 4px 0;
+  }
+  .drive-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--muted); flex-shrink: 0;
+  }
+  .drive-dot.connected { background: var(--success); box-shadow: 0 0 6px var(--success); }
+  .drive-dot.syncing { background: var(--accent3); animation: pulse 1s infinite; }
+  .drive-dot.error { background: var(--danger); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  #driveBtn.connected { color: var(--success); border-color: var(--success); }
+  #driveBtn.syncing { color: var(--accent3); border-color: var(--accent3); }
+
 </style>
 </head>
 <body>
@@ -660,6 +677,7 @@
       <label class="btn btn-ghost" style="font-size:10px;padding:7px 12px;white-space:nowrap;cursor:pointer">
         ⬆ IMPORT<input type="file" accept=".json" onchange="importData(event)" style="display:none">
       </label>
+      <button id="driveBtn" class="btn btn-ghost" style="font-size:10px;padding:7px 12px;white-space:nowrap" onclick="driveAuth()">☁ DRIVE</button>
     </div>
   </div>
 
@@ -952,6 +970,7 @@
 <div class="swipe-hint" id="swipeHint"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
 // ─── DATA LAYER ─────────────────────────────────────────────────────────────
 const STORAGE_KEY = 'vis_v1';
@@ -1569,6 +1588,189 @@ function showSwipeHint(msg) {
 function blurInput() {
   const inp = document.getElementById('answerInput');
   if (inp) inp.blur();
+}
+
+
+// ─── GOOGLE DRIVE SYNC ───────────────────────────────────────────────────────
+// Uses Google Identity Services (OAuth2) + Drive REST API
+// File stored as: vis-wordbank.json in app data folder (hidden, app-specific)
+
+const DRIVE_CLIENT_ID = '525994702234-d29u7o3c5m4i8k1urnofsqe9smbud3kk.apps.googleusercontent.com'; // <-- replace after setup
+const DRIVE_SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
+const DRIVE_FILE_NAME = 'vis-wordbank.json';
+
+let driveToken = null;
+let driveFileId = localStorage.getItem('vis_drive_file_id') || null;
+let driveConnected = false;
+let driveSyncTimeout = null;
+
+function driveAuth() {
+  if (!window.google || DRIVE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID') {
+    showToast('⚠ Add your Google Client ID first — see setup guide');
+    showDriveSetupGuide();
+    return;
+  }
+  const client = google.accounts.oauth2.initTokenClient({
+    client_id: DRIVE_CLIENT_ID,
+    scope: DRIVE_SCOPES,
+    callback: async (resp) => {
+      if (resp.error) { driveSetStatus('error', '☁ DRIVE'); showToast('Drive auth failed'); return; }
+      driveToken = resp.access_token;
+      driveConnected = true;
+      driveSetStatus('connected', '☁ SYNCED');
+      localStorage.setItem('vis_drive_token', driveToken);
+      showToast('Google Drive connected ✓');
+      await drivePull(); // Pull latest on connect
+    }
+  });
+  client.requestAccessToken();
+}
+
+function driveSetStatus(state, label) {
+  const btn = document.getElementById('driveBtn');
+  btn.className = 'btn btn-ghost';
+  if (state === 'connected') btn.classList.add('connected');
+  if (state === 'syncing') btn.classList.add('syncing');
+  btn.style.fontSize = '10px';
+  btn.style.padding = '7px 12px';
+  btn.style.whiteSpace = 'nowrap';
+  btn.textContent = label || '☁ DRIVE';
+}
+
+// Push state to Drive (debounced — waits 3s after last change)
+function drivePushDebounced() {
+  if (!driveConnected || !driveToken) return;
+  clearTimeout(driveSyncTimeout);
+  driveSyncTimeout = setTimeout(drivePush, 3000);
+}
+
+async function drivePush() {
+  if (!driveConnected || !driveToken) return;
+  driveSetStatus('syncing', '↑ SAVING...');
+  try {
+    const body = JSON.stringify(state);
+    if (driveFileId) {
+      // Update existing file
+      await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${driveToken}`, 'Content-Type': 'application/json' },
+        body
+      });
+    } else {
+      // Create new file in appDataFolder
+      const meta = await fetch('https://www.googleapis.com/drive/v3/files', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${driveToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: DRIVE_FILE_NAME, parents: ['appDataFolder'] })
+      });
+      const metaJson = await meta.json();
+      driveFileId = metaJson.id;
+      localStorage.setItem('vis_drive_file_id', driveFileId);
+      // Upload content
+      await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${driveToken}`, 'Content-Type': 'application/json' },
+        body
+      });
+    }
+    driveSetStatus('connected', '☁ SYNCED');
+  } catch(e) {
+    driveSetStatus('error', '☁ ERROR');
+    console.error('Drive push error:', e);
+  }
+}
+
+async function drivePull() {
+  if (!driveConnected || !driveToken) return;
+  driveSetStatus('syncing', '↓ LOADING...');
+  try {
+    // Find file
+    const list = await fetch(
+      `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name='${DRIVE_FILE_NAME}'`,
+      { headers: { 'Authorization': `Bearer ${driveToken}` } }
+    );
+    const listJson = await list.json();
+    if (!listJson.files || listJson.files.length === 0) {
+      // No cloud file yet — push local data up
+      driveSetStatus('connected', '☁ SYNCED');
+      await drivePush();
+      return;
+    }
+    driveFileId = listJson.files[0].id;
+    localStorage.setItem('vis_drive_file_id', driveFileId);
+
+    // Download content
+    const file = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`,
+      { headers: { 'Authorization': `Bearer ${driveToken}` } }
+    );
+    const cloudState = await file.json();
+
+    // Merge: take whichever has more words + merge sessions
+    if (cloudState.words && cloudState.words.length > 0) {
+      const localWords = new Map(state.words.map(w => [w.word.toLowerCase(), w]));
+      cloudState.words.forEach(w => {
+        const key = w.word.toLowerCase();
+        if (!localWords.has(key)) localWords.set(key, w);
+        else {
+          // Keep whichever has higher recallScore
+          const local = localWords.get(key);
+          if ((w.recallScore||0) > (local.recallScore||0)) localWords.set(key, w);
+        }
+      });
+      state.words = Array.from(localWords.values());
+    }
+    if (cloudState.sessions && cloudState.sessions.length > state.sessions.length) {
+      state.sessions = cloudState.sessions;
+    }
+    if (cloudState.activityLog) {
+      Object.assign(state.activityLog, cloudState.activityLog);
+    }
+    if (cloudState.streak > (state.streak||0)) state.streak = cloudState.streak;
+    if (cloudState.startDate && cloudState.startDate < state.startDate) state.startDate = cloudState.startDate;
+
+    save();
+    renderAll();
+    driveSetStatus('connected', '☁ SYNCED');
+    showToast('Synced from Google Drive ✓');
+  } catch(e) {
+    driveSetStatus('error', '☁ ERROR');
+    console.error('Drive pull error:', e);
+  }
+}
+
+function showDriveSetupGuide() {
+  const existing = document.getElementById('driveGuide');
+  if (existing) { existing.remove(); return; }
+  const guide = document.createElement('div');
+  guide.id = 'driveGuide';
+  guide.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px';
+  guide.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--accent);border-radius:12px;padding:28px;max-width:480px;width:100%;font-family:var(--font-mono);font-size:12px;line-height:1.9;color:var(--text)">
+      <div style="font-family:var(--font-display);font-size:18px;font-weight:800;color:var(--accent);margin-bottom:16px">☁ Google Drive Setup</div>
+      <div style="color:var(--muted);margin-bottom:16px;font-size:11px">One-time setup to enable auto-sync across devices. Takes ~5 minutes.</div>
+      <div style="counter-reset:steps">
+        <div style="margin-bottom:10px"><strong style="color:var(--accent3)">1.</strong> Go to <a href="https://console.cloud.google.com" target="_blank" style="color:var(--accent)">console.cloud.google.com</a></div>
+        <div style="margin-bottom:10px"><strong style="color:var(--accent3)">2.</strong> Create a new project → name it <strong>VIS App</strong></div>
+        <div style="margin-bottom:10px"><strong style="color:var(--accent3)">3.</strong> APIs & Services → Enable <strong>Google Drive API</strong></div>
+        <div style="margin-bottom:10px"><strong style="color:var(--accent3)">4.</strong> OAuth consent screen → External → fill App name: <strong>VIS</strong></div>
+        <div style="margin-bottom:10px"><strong style="color:var(--accent3)">5.</strong> Credentials → Create OAuth 2.0 Client ID → Web application</div>
+        <div style="margin-bottom:10px"><strong style="color:var(--accent3)">6.</strong> Add your GitHub Pages URL to <strong>Authorised JavaScript origins</strong></div>
+        <div style="margin-bottom:16px"><strong style="color:var(--accent3)">7.</strong> Copy the <strong>Client ID</strong> and paste it in the HTML file replacing <code style="color:var(--accent3)">YOUR_GOOGLE_CLIENT_ID</code></div>
+      </div>
+      <div style="background:rgba(0,229,255,0.06);border:1px solid var(--border);border-radius:6px;padding:10px;font-size:10px;color:var(--muted);margin-bottom:16px">
+        Your data stays in your own Google Drive appdata folder — private, only accessible by this app.
+      </div>
+      <button onclick="document.getElementById('driveGuide').remove()" style="background:var(--accent);color:var(--bg);border:none;padding:10px 24px;border-radius:6px;font-family:var(--font-mono);font-weight:700;font-size:12px;cursor:pointer;width:100%">GOT IT</button>
+    </div>`;
+  document.body.appendChild(guide);
+}
+
+// Hook into save() to auto-push after every change
+const _origSave = save;
+function save() {
+  _origSave();
+  drivePushDebounced();
 }
 
 // ─── EXPORT / IMPORT ──────────────────────────────────────────────────────────
