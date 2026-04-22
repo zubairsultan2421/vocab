@@ -1605,9 +1605,8 @@ let driveConnected = false;
 let driveSyncTimeout = null;
 
 function driveAuth() {
-  if (!window.google || DRIVE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID') {
-    showToast('⚠ Add your Google Client ID first — see setup guide');
-    showDriveSetupGuide();
+  if (!window.google) {
+    showToast('⚠ Google script not loaded yet — try again in a second');
     return;
   }
   const client = google.accounts.oauth2.initTokenClient({
@@ -1756,7 +1755,7 @@ function showDriveSetupGuide() {
         <div style="margin-bottom:10px"><strong style="color:var(--accent3)">4.</strong> OAuth consent screen → External → fill App name: <strong>VIS</strong></div>
         <div style="margin-bottom:10px"><strong style="color:var(--accent3)">5.</strong> Credentials → Create OAuth 2.0 Client ID → Web application</div>
         <div style="margin-bottom:10px"><strong style="color:var(--accent3)">6.</strong> Add your GitHub Pages URL to <strong>Authorised JavaScript origins</strong></div>
-        <div style="margin-bottom:16px"><strong style="color:var(--accent3)">7.</strong> Copy the <strong>Client ID</strong> and paste it in the HTML file replacing <code style="color:var(--accent3)">YOUR_GOOGLE_CLIENT_ID</code></div>
+        <div style="margin-bottom:16px"><strong style="color:var(--accent3)">7.</strong> Copy the <strong>Client ID</strong> and paste it in the HTML file replacing <code style="color:var(--accent3)">525994702234-d29u7o3c5m4i8k1urnofsqe9smbud3kk.apps.googleusercontent.com</code></div>
       </div>
       <div style="background:rgba(0,229,255,0.06);border:1px solid var(--border);border-radius:6px;padding:10px;font-size:10px;color:var(--muted);margin-bottom:16px">
         Your data stays in your own Google Drive appdata folder — private, only accessible by this app.
@@ -1814,6 +1813,35 @@ function importData(event) {
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 renderAll();
+
+// Auto-connect to Drive silently on every page load
+function driveAutoConnect() {
+  if (!DRIVE_CLIENT_ID || DRIVE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID') return;
+  if (!window.google) { setTimeout(driveAutoConnect, 800); return; }
+  try {
+    const client = google.accounts.oauth2.initTokenClient({
+      client_id: DRIVE_CLIENT_ID,
+      scope: DRIVE_SCOPES,
+      prompt: '',
+      callback: async (resp) => {
+        if (resp.error) {
+          // Silent fail — user just needs to tap DRIVE button manually first time
+          return;
+        }
+        driveToken = resp.access_token;
+        driveConnected = true;
+        driveSetStatus('syncing', '↓ SYNCING...');
+        await drivePull();
+      }
+    });
+    client.requestAccessToken({ prompt: 'none' });
+  } catch(e) {
+    // Silent fail on auto-connect
+    console.log('Drive auto-connect skipped:', e.message);
+  }
+}
+
+window.addEventListener('load', () => setTimeout(driveAutoConnect, 1500));
 </script>
 </body>
 </html>
