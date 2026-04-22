@@ -1,0 +1,1622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0a0f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="VIS">
+<title>VIS — Vocabulary Intelligence System</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #1a1a24;
+    --border: #2a2a38;
+    --accent: #00e5ff;
+    --accent2: #7c3aed;
+    --accent3: #f59e0b;
+    --danger: #ef4444;
+    --success: #10b981;
+    --text: #e8e8f0;
+    --muted: #6b6b80;
+    --font-display: 'Syne', sans-serif;
+    --font-mono: 'Space Mono', monospace;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: 
+      linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; padding: 20px; }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 0 30px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 28px;
+  }
+  .logo {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 22px;
+    letter-spacing: -0.5px;
+  }
+  .logo span { color: var(--accent); }
+  .header-meta {
+    font-size: 11px;
+    color: var(--muted);
+    text-align: right;
+    line-height: 1.8;
+  }
+  .header-meta strong { color: var(--accent3); }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 28px;
+    background: var(--surface);
+    padding: 4px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  .tab {
+    flex: 1;
+    padding: 10px;
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .tab.active {
+    background: var(--surface2);
+    color: var(--accent);
+    border: 1px solid var(--border);
+  }
+  .tab:hover:not(.active) { color: var(--text); }
+
+  /* Panels */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* KPI Row */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .kpi {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .kpi::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent);
+  }
+  .kpi.amber::before { background: var(--accent3); }
+  .kpi.purple::before { background: var(--accent2); }
+  .kpi.green::before { background: var(--success); }
+  .kpi-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; }
+  .kpi-value { font-family: var(--font-display); font-size: 28px; font-weight: 800; line-height: 1; }
+  .kpi-sub { font-size: 10px; color: var(--muted); margin-top: 4px; }
+
+  /* Section headers */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .section-title {
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+  }
+
+  /* Add word form */
+  .add-form {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 24px;
+  }
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 2fr 2fr auto;
+    gap: 10px;
+    align-items: end;
+  }
+  .field label {
+    display: block;
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 6px;
+  }
+  .field input, .field select, .field textarea {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 9px 12px;
+    border-radius: 6px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus {
+    border-color: var(--accent);
+  }
+  .field select option { background: var(--surface2); }
+  .btn {
+    padding: 9px 20px;
+    border: none;
+    border-radius: 6px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: var(--bg);
+  }
+  .btn-primary:hover { background: #33ecff; transform: translateY(-1px); }
+  .btn-ghost {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { color: var(--text); border-color: var(--text); }
+  .btn-danger {
+    background: transparent;
+    color: var(--danger);
+    border: 1px solid var(--danger);
+    font-size: 11px;
+    padding: 6px 12px;
+  }
+
+  /* Word table */
+  .word-table { width: 100%; border-collapse: collapse; }
+  .word-table th {
+    text-align: left;
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .word-table td {
+    padding: 12px;
+    border-bottom: 1px solid rgba(42,42,56,0.5);
+    font-size: 12px;
+    vertical-align: middle;
+  }
+  .word-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .word-cell {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--text);
+  }
+  .context-cell { color: var(--muted); font-size: 11px; max-width: 200px; }
+
+  /* Decay bar */
+  .decay-bar {
+    width: 80px;
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .decay-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.5s;
+  }
+
+  /* Score badge */
+  .score-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 13px;
+    border: 2px solid;
+  }
+
+  /* Status pill */
+  .pill {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .pill-new { background: rgba(0,229,255,0.1); color: var(--accent); }
+  .pill-learning { background: rgba(245,158,11,0.1); color: var(--accent3); }
+  .pill-mastered { background: rgba(16,185,129,0.1); color: var(--success); }
+  .pill-due { background: rgba(239,68,68,0.15); color: var(--danger); }
+
+  /* Drill panel */
+  .drill-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 40px;
+    text-align: center;
+    margin-bottom: 20px;
+    min-height: 280px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .drill-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 0%, rgba(0,229,255,0.04) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .drill-phase {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    margin-bottom: 20px;
+  }
+  .drill-prompt {
+    font-family: var(--font-display);
+    font-size: 32px;
+    font-weight: 800;
+    margin-bottom: 12px;
+    line-height: 1.2;
+  }
+  .drill-sub {
+    font-size: 12px;
+    color: var(--muted);
+    max-width: 400px;
+    line-height: 1.7;
+    margin-bottom: 24px;
+  }
+  .drill-reveal {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 24px;
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 24px;
+    display: none;
+  }
+  .drill-buttons { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .drill-btn {
+    padding: 10px 22px;
+    border-radius: 6px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+  }
+  .drill-btn-fail { background: rgba(239,68,68,0.15); color: var(--danger); border: 1px solid var(--danger); }
+  .drill-btn-hard { background: rgba(245,158,11,0.1); color: var(--accent3); border: 1px solid var(--accent3); }
+  .drill-btn-good { background: rgba(0,229,255,0.1); color: var(--accent); border: 1px solid var(--accent); }
+  .drill-btn-easy { background: rgba(16,185,129,0.1); color: var(--success); border: 1px solid var(--success); }
+  .drill-btn:hover { transform: translateY(-2px); filter: brightness(1.2); }
+
+  .drill-meta {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 20px;
+  }
+  .drill-meta span { display: flex; align-items: center; gap: 6px; }
+  .drill-meta strong { color: var(--text); }
+
+  .progress-bar-wrap {
+    width: 100%;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent2), var(--accent));
+    border-radius: 2px;
+    transition: width 0.4s ease;
+  }
+
+  /* Chart area */
+  .chart-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  canvas { width: 100% !important; }
+
+  /* Velocity grid */
+  .velocity-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    margin-top: 12px;
+  }
+  .velocity-cell {
+    aspect-ratio: 1;
+    border-radius: 3px;
+    background: var(--border);
+    position: relative;
+    cursor: pointer;
+    transition: transform 0.1s;
+  }
+  .velocity-cell:hover { transform: scale(1.2); z-index: 10; }
+  .velocity-cell span {
+    position: absolute;
+    bottom: calc(100% + 4px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    white-space: nowrap;
+    display: none;
+    z-index: 20;
+  }
+  .velocity-cell:hover span { display: block; }
+
+  /* Session summary */
+  .session-summary {
+    background: var(--surface);
+    border: 1px solid var(--success);
+    border-radius: 8px;
+    padding: 28px;
+    text-align: center;
+    display: none;
+  }
+  .session-summary.visible { display: block; }
+  .summary-title {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--success);
+    margin-bottom: 16px;
+  }
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin: 20px 0;
+  }
+  .summary-stat { text-align: center; }
+  .summary-stat .val { font-family: var(--font-display); font-size: 28px; font-weight: 800; }
+  .summary-stat .lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; margin-top: 4px; }
+
+  /* No words state */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+  }
+  .empty-state .icon { font-size: 40px; margin-bottom: 16px; }
+  .empty-state p { font-size: 13px; line-height: 1.8; }
+
+  /* Notification */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--surface2);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    z-index: 1000;
+    transform: translateY(80px);
+    opacity: 0;
+    transition: all 0.3s ease;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+
+  /* Responsive */
+  @media (max-width: 640px) {
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .form-grid { grid-template-columns: 1fr; }
+    .drill-prompt { font-size: 22px; }
+    .summary-grid { grid-template-columns: repeat(3,1fr); gap: 8px; }
+  }
+
+  .tag-domain {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    background: rgba(124,58,237,0.15);
+    color: #a78bfa;
+    margin-left: 4px;
+  }
+
+  .interval-chip {
+    font-size: 10px;
+    color: var(--muted);
+    background: var(--surface2);
+    padding: 2px 7px;
+    border-radius: 3px;
+  }
+
+  .action-row { display: flex; gap: 6px; align-items: center; }
+  .range-btn {
+    padding: 6px 14px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .range-btn:hover { color: var(--text); border-color: var(--text); }
+  .range-btn.active {
+    background: rgba(0,229,255,0.1);
+    border-color: var(--accent);
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+
+  /* ── MOBILE OPTIMISATIONS ───────────────────────────────────────── */
+  @media (max-width: 768px) {
+    .app { padding: 12px; }
+
+    /* Header compact */
+    .header { padding: 12px 0 16px; margin-bottom: 16px; }
+    .logo { font-size: 18px; }
+    .header-meta { font-size: 10px; }
+    .btn-ghost { font-size: 10px; padding: 6px 10px; }
+
+    /* Tabs full width, larger tap targets */
+    .tabs { gap: 2px; padding: 3px; }
+    .tab { padding: 12px 6px; font-size: 10px; }
+
+    /* KPIs 2-col on phone */
+    .kpi-row { grid-template-columns: repeat(2,1fr); gap: 8px; }
+    .kpi { padding: 12px; }
+    .kpi-value { font-size: 22px; }
+
+    /* Charts stacked */
+    .chart-wrap { padding: 14px; }
+    div[style*="grid-template-columns:1fr 1fr"] {
+      grid-template-columns: 1fr !important;
+    }
+
+    /* Word bank table scroll */
+    .word-table th, .word-table td { padding: 10px 8px; font-size: 11px; }
+    .word-cell { font-size: 13px; }
+
+    /* Add form stacked */
+    .form-grid { grid-template-columns: 1fr !important; gap: 8px; }
+
+    /* Drill card — full screen feel */
+    .drill-card {
+      padding: 28px 20px;
+      min-height: 60vh;
+      border-radius: 16px;
+    }
+    .drill-prompt { font-size: 20px; }
+    .drill-phase { font-size: 9px; margin-bottom: 14px; }
+    .drill-sub { font-size: 11px; margin-bottom: 16px; }
+
+    /* Answer input — large for mobile keyboard */
+    #answerInput {
+      font-size: 24px !important;
+      padding: 18px 14px !important;
+      border-radius: 12px !important;
+    }
+    #answerHint { font-size: 11px !important; }
+
+    /* Drill buttons — big tap targets */
+    .drill-btn {
+      padding: 16px 24px !important;
+      font-size: 13px !important;
+      border-radius: 10px !important;
+      min-width: 120px;
+    }
+    .drill-buttons {
+      gap: 10px !important;
+      width: 100%;
+    }
+    .drill-buttons button { flex: 1; }
+
+    /* Drill reveal box */
+    .drill-reveal {
+      font-size: 16px !important;
+      padding: 14px 16px !important;
+    }
+
+    /* Range buttons wrap nicely */
+    .range-btn { padding: 8px 12px; font-size: 11px; }
+
+    /* Session summary */
+    .summary-grid { gap: 6px; }
+    .summary-stat .val { font-size: 22px; }
+
+    /* Heatmap smaller cells */
+    .velocity-grid { gap: 3px; }
+
+    /* Session settings box */
+    div[style*="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px"] {
+      padding: 14px !important;
+    }
+  }
+
+  /* Swipe hint overlay */
+  .swipe-hint {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,229,255,0.12);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 8px 18px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.4s;
+    z-index: 100;
+    white-space: nowrap;
+  }
+  .swipe-hint.show { opacity: 1; }
+
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div>
+      <div class="logo">V<span>I</span>S</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:3px;">Vocabulary Intelligence System</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="header-meta" style="text-align:right;margin-right:4px">
+        Day <strong id="dayCount">—</strong> of 90 &nbsp;|&nbsp; Streak <strong id="streakCount">—</strong> 🔥<br>
+        <span id="dateDisplay">—</span>
+      </div>
+      <button class="btn btn-ghost" style="font-size:10px;padding:7px 12px;white-space:nowrap" onclick="exportData()">⬇ EXPORT</button>
+      <label class="btn btn-ghost" style="font-size:10px;padding:7px 12px;white-space:nowrap;cursor:pointer">
+        ⬆ IMPORT<input type="file" accept=".json" onchange="importData(event)" style="display:none">
+      </label>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('dashboard')">📊 Dashboard</button>
+    <button class="tab" onclick="switchTab('bank')">🗃 Word Bank</button>
+    <button class="tab" onclick="switchTab('drill')">⚡ Drill</button>
+    <button class="tab" onclick="switchTab('analytics')">📈 Analytics</button>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="panel active" id="panel-dashboard">
+    <div class="kpi-row">
+      <div class="kpi">
+        <div class="kpi-label">Total Words</div>
+        <div class="kpi-value" id="kpi-total">0</div>
+        <div class="kpi-sub">in bank</div>
+      </div>
+      <div class="kpi amber">
+        <div class="kpi-label">Due Today</div>
+        <div class="kpi-value" id="kpi-due" style="color:var(--accent3)">0</div>
+        <div class="kpi-sub">need review</div>
+      </div>
+      <div class="kpi purple">
+        <div class="kpi-label">Mastered</div>
+        <div class="kpi-value" id="kpi-mastered" style="color:#a78bfa">0</div>
+        <div class="kpi-sub">≥ score 80</div>
+      </div>
+      <div class="kpi green">
+        <div class="kpi-label">Sessions Done</div>
+        <div class="kpi-value" id="kpi-sessions" style="color:var(--success)">0</div>
+        <div class="kpi-sub">total drills</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+      <div class="chart-wrap">
+        <div class="section-title" style="margin-bottom:12px">Recall Score Distribution</div>
+        <canvas id="scoreChart" height="160"></canvas>
+      </div>
+      <div class="chart-wrap">
+        <div class="section-title" style="margin-bottom:12px">Domain Breakdown</div>
+        <canvas id="domainChart" height="160"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-wrap">
+      <div class="section-header">
+        <div class="section-title">90-Day Activity Heatmap</div>
+        <div style="font-size:10px;color:var(--muted)">words drilled per day</div>
+      </div>
+      <div class="velocity-grid" id="heatmap"></div>
+    </div>
+
+    <div class="chart-wrap">
+      <div class="section-title" style="margin-bottom:12px">Words Due This Week</div>
+      <div id="dueList" style="font-size:12px;color:var(--muted)">No words due.</div>
+    </div>
+  </div>
+
+  <!-- WORD BANK -->
+  <div class="panel" id="panel-bank">
+    <div class="add-form">
+      <div class="section-title" style="margin-bottom:14px">+ Add Word to Bank</div>
+      <div class="form-grid">
+        <div class="field">
+          <label>Word</label>
+          <input type="text" id="inp-word" placeholder="e.g. articulate">
+        </div>
+        <div class="field">
+          <label>Context (when you needed it)</label>
+          <input type="text" id="inp-context" placeholder="e.g. client asked me to explain trends">
+        </div>
+        <div class="field">
+          <label>Your sentence using it</label>
+          <input type="text" id="inp-sentence" placeholder="e.g. The data articulates a shift toward...">
+        </div>
+        <div class="field">
+          <label>Domain</label>
+          <select id="inp-domain">
+            <option value="general">General</option>
+            <option value="property">Property</option>
+            <option value="data">Data / Tech</option>
+            <option value="advisory">Advisory</option>
+            <option value="professional">Professional</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:12px;text-align:right">
+        <button class="btn btn-primary" onclick="addWord()">ADD TO BANK →</button>
+      </div>
+    </div>
+
+    <div class="section-header">
+      <div class="section-title">Word Bank <span id="bankCount" style="color:var(--accent)">0</span></div>
+      <div style="display:flex;gap:8px">
+        <select id="filterStatus" onchange="renderBank()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-family:var(--font-mono);font-size:11px;padding:5px 10px;border-radius:5px;outline:none">
+          <option value="all">All Status</option>
+          <option value="new">New</option>
+          <option value="learning">Learning</option>
+          <option value="mastered">Mastered</option>
+          <option value="due">Due</option>
+        </select>
+        <select id="filterDomain" onchange="renderBank()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-family:var(--font-mono);font-size:11px;padding:5px 10px;border-radius:5px;outline:none">
+          <option value="all">All Domains</option>
+          <option value="general">General</option>
+          <option value="property">Property</option>
+          <option value="data">Data / Tech</option>
+          <option value="advisory">Advisory</option>
+          <option value="professional">Professional</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="overflow-x:auto">
+      <table class="word-table">
+        <thead>
+          <tr>
+            <th>Word</th>
+            <th>Domain</th>
+            <th>Recall Score</th>
+            <th>Decay</th>
+            <th>Next Review</th>
+            <th>Status</th>
+            <th>Reps</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="bankBody"></tbody>
+      </table>
+    </div>
+    <div id="bankEmpty" class="empty-state" style="display:none">
+      <div class="icon">🗃</div>
+      <p>No words yet.<br>Add your first word above to start building your bank.</p>
+    </div>
+  </div>
+
+  <!-- DRILL -->
+  <div class="panel" id="panel-drill">
+    <div id="drillStart">
+      <div class="kpi-row" style="grid-template-columns:repeat(3,1fr)">
+        <div class="kpi amber">
+          <div class="kpi-label">In Range</div>
+          <div class="kpi-value" id="drill-due-count" style="color:var(--accent3)">0</div>
+          <div class="kpi-sub">words selected</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Session Est.</div>
+          <div class="kpi-value" id="drill-est-time">—</div>
+          <div class="kpi-sub">minutes</div>
+        </div>
+        <div class="kpi purple">
+          <div class="kpi-label">Queue</div>
+          <div class="kpi-value" id="drill-queue-count" style="color:#a78bfa">0</div>
+          <div class="kpi-sub">will be drilled</div>
+        </div>
+      </div>
+
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px;margin:16px 0">
+        <div class="section-title" style="margin-bottom:14px">Session Settings</div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px">
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;min-width:80px">Word Range</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="range-btn active" onclick="setRange(3,this)">Last 3 days</button>
+            <button class="range-btn" onclick="setRange(7,this)">Last 7 days</button>
+            <button class="range-btn" onclick="setRange(30,this)">Last 30 days</button>
+            <button class="range-btn" onclick="setRange(60,this)">Last 60 days</button>
+            <button class="range-btn" onclick="setRange(90,this)">All 90 days</button>
+          </div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;min-width:80px">Max Cards</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="range-btn" onclick="setMax(10,this)">10</button>
+            <button class="range-btn active" onclick="setMax(20,this)">20</button>
+            <button class="range-btn" onclick="setMax(30,this)">30</button>
+            <button class="range-btn" onclick="setMax(999,this)">All</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="text-align:center;margin:24px 0">
+        <button class="btn btn-primary" style="padding:14px 40px;font-size:14px" onclick="startDrill()">START DRILL SESSION →</button>
+        <div style="font-size:11px;color:var(--muted);margin-top:10px">SM-2 · Randomised · Equal spacing per round</div>
+      </div>
+    </div>
+
+    <div id="drillActive" style="display:none">
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" id="drillProgress" style="width:0%"></div>
+      </div>
+      <div class="drill-meta">
+        <span>Card <strong id="drillCardNum">1</strong> of <strong id="drillCardTotal">—</strong></span>
+        <span>Accuracy <strong id="drillSessionScore">—</strong></span>
+        <span>Elapsed <strong id="drillTimer">0:00</strong></span>
+      </div>
+      <div class="drill-card" id="drillCard">
+        <div class="drill-phase" id="drillPhaseLabel">RECALL CHALLENGE</div>
+        <div class="drill-prompt" id="drillPrompt">—</div>
+        <div class="drill-sub" id="drillSub">—</div>
+        <div id="answerInputWrap" style="width:100%;max-width:400px;margin:0 auto 16px">
+          <input id="answerInput" type="text" placeholder="Type the word..." autocomplete="off" autocorrect="off" spellcheck="false"
+            style="width:100%;background:var(--bg);border:2px solid var(--border);color:var(--text);font-family:var(--font-display);font-size:20px;font-weight:700;padding:14px 18px;border-radius:8px;outline:none;text-align:center;letter-spacing:0.05em;transition:border-color 0.2s"
+            onkeydown="handleAnswerKey(event)">
+          <div style="display:flex;gap:8px;margin-top:10px;align-items:center;justify-content:center">
+            <div id="answerHint" style="font-size:10px;color:var(--muted)">Press ENTER or tap</div>
+            <button class="drill-btn drill-btn-good" onclick="submitAnswer()" style="padding:10px 20px;font-size:12px">SUBMIT ↵</button>
+          </div>
+        </div>
+        <div class="drill-reveal" id="drillReveal" style="width:100%;max-width:400px;margin:0 auto 16px;display:none"></div>
+        <div class="drill-buttons" id="drillButtons"></div>
+      </div>
+    </div>
+
+    <div class="session-summary" id="sessionSummary">
+      <div class="summary-title">✓ Session Complete</div>
+      <div class="summary-grid">
+        <div class="summary-stat">
+          <div class="val" id="sum-drilled">—</div>
+          <div class="lbl">Words Drilled</div>
+        </div>
+        <div class="summary-stat">
+          <div class="val" id="sum-accuracy" style="color:var(--accent)">—</div>
+          <div class="lbl">Accuracy</div>
+        </div>
+        <div class="summary-stat">
+          <div class="val" id="sum-mastered" style="color:var(--success)">—</div>
+          <div class="lbl">Newly Mastered</div>
+        </div>
+      </div>
+      <div id="sum-missed-wrap" style="margin:16px 0;text-align:left;display:none">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Missed Words</div>
+        <div id="sum-missed" style="font-size:12px;line-height:2"></div>
+      </div>
+      <button class="btn btn-primary" onclick="resetDrill()">NEW SESSION</button>
+    </div>
+  </div>
+
+  <!-- ANALYTICS -->
+  <div class="panel" id="panel-analytics">
+    <div class="kpi-row">
+      <div class="kpi">
+        <div class="kpi-label">Avg Recall Score</div>
+        <div class="kpi-value" id="ana-avg">—</div>
+        <div class="kpi-sub">across all words</div>
+      </div>
+      <div class="kpi amber">
+        <div class="kpi-label">Weakest Word</div>
+        <div class="kpi-value" id="ana-weak" style="color:var(--danger);font-size:16px">—</div>
+        <div class="kpi-sub">lowest score</div>
+      </div>
+      <div class="kpi green">
+        <div class="kpi-label">Strongest Word</div>
+        <div class="kpi-value" id="ana-strong" style="color:var(--success);font-size:16px">—</div>
+        <div class="kpi-sub">highest score</div>
+      </div>
+      <div class="kpi purple">
+        <div class="kpi-label">Total Reps</div>
+        <div class="kpi-value" id="ana-reps" style="color:#a78bfa">—</div>
+        <div class="kpi-sub">review events</div>
+      </div>
+    </div>
+
+    <div class="chart-wrap" style="margin-bottom:20px">
+      <div class="section-title" style="margin-bottom:14px">Recall Score Over Time</div>
+      <canvas id="trendChart" height="160"></canvas>
+    </div>
+
+    <div class="chart-wrap">
+      <div class="section-title" style="margin-bottom:14px">Word Performance Table</div>
+      <table class="word-table">
+        <thead>
+          <tr>
+            <th>Word</th>
+            <th>Score</th>
+            <th>Interval</th>
+            <th>Ease Factor</th>
+            <th>Reps</th>
+            <th>Last Reviewed</th>
+            <th>Verdict</th>
+          </tr>
+        </thead>
+        <tbody id="anaBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="swipe-hint" id="swipeHint"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+// ─── DATA LAYER ─────────────────────────────────────────────────────────────
+const STORAGE_KEY = 'vis_v1';
+let state = load();
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  return {
+    words: [],
+    sessions: [],
+    startDate: Date.now(),
+    streak: 0,
+    lastDrillDate: null,
+    activityLog: {} // date string -> count
+  };
+}
+
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+// ─── SM-2 ALGORITHM ──────────────────────────────────────────────────────────
+// grade: 0=fail,1=hard,2=good,3=easy
+function sm2Update(word, grade) {
+  if (!word.easeFactor) word.easeFactor = 2.5;
+  if (!word.interval) word.interval = 1;
+  if (!word.reps) word.reps = 0;
+  if (!word.recallHistory) word.recallHistory = [];
+
+  const qualityMap = { 0: 0, 1: 2, 2: 4, 3: 5 };
+  const q = qualityMap[grade];
+
+  word.recallHistory.push({ date: Date.now(), grade, q });
+
+  if (q < 3) {
+    word.reps = 0;
+    word.interval = 1;
+  } else {
+    if (word.reps === 0) word.interval = 1;
+    else if (word.reps === 1) word.interval = 6;
+    else word.interval = Math.round(word.interval * word.easeFactor);
+    word.reps++;
+  }
+
+  word.easeFactor = Math.max(1.3, word.easeFactor + (0.1 - (5 - q) * (0.08 + (5 - q) * 0.02)));
+  word.nextReview = Date.now() + word.interval * 86400000;
+  word.lastReviewed = Date.now();
+
+  // Recall score: weighted average of last 5 quality scores
+  const hist = word.recallHistory.slice(-5);
+  const weights = hist.map((_, i) => i + 1);
+  const wSum = weights.reduce((a, b) => a + b, 0);
+  word.recallScore = Math.round(hist.reduce((acc, h, i) => acc + h.q * weights[i], 0) / wSum * 20);
+
+  return word;
+}
+
+function getStatus(word) {
+  if (!word.reps || word.reps === 0) return 'new';
+  if (word.recallScore >= 80) return 'mastered';
+  if (word.nextReview && word.nextReview <= Date.now()) return 'due';
+  return 'learning';
+}
+
+function getDecay(word) {
+  if (!word.nextReview || !word.lastReviewed) return 100;
+  const total = word.nextReview - word.lastReviewed;
+  const elapsed = Date.now() - word.lastReviewed;
+  return Math.max(0, Math.min(100, Math.round((1 - elapsed / total) * 100)));
+}
+
+function getDueWords() {
+  return state.words.filter(w => !w.nextReview || w.nextReview <= Date.now() + 86400000);
+}
+
+// ─── WORD BANK ───────────────────────────────────────────────────────────────
+function addWord() {
+  const word = document.getElementById('inp-word').value.trim();
+  const context = document.getElementById('inp-context').value.trim();
+  const sentence = document.getElementById('inp-sentence').value.trim();
+  const domain = document.getElementById('inp-domain').value;
+  if (!word) { showToast('Enter a word first'); return; }
+
+  state.words.push({
+    id: Date.now(),
+    word, context, sentence, domain,
+    addedDate: Date.now(),
+    recallScore: 0,
+    reps: 0,
+    interval: 1,
+    easeFactor: 2.5,
+    nextReview: Date.now(),
+    lastReviewed: null,
+    recallHistory: []
+  });
+  save();
+  document.getElementById('inp-word').value = '';
+  document.getElementById('inp-context').value = '';
+  document.getElementById('inp-sentence').value = '';
+  showToast(`"${word}" added to bank`);
+  renderAll();
+}
+
+function deleteWord(id) {
+  state.words = state.words.filter(w => w.id !== id);
+  save(); renderAll();
+}
+
+function renderBank() {
+  const statusF = document.getElementById('filterStatus').value;
+  const domainF = document.getElementById('filterDomain').value;
+  let words = [...state.words];
+  if (statusF !== 'all') words = words.filter(w => getStatus(w) === statusF);
+  if (domainF !== 'all') words = words.filter(w => w.domain === domainF);
+  words.sort((a,b) => (a.nextReview||0) - (b.nextReview||0));
+
+  const tbody = document.getElementById('bankBody');
+  const empty = document.getElementById('bankEmpty');
+  document.getElementById('bankCount').textContent = state.words.length;
+
+  if (words.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+  tbody.innerHTML = words.map(w => {
+    const status = getStatus(w);
+    const decay = getDecay(w);
+    const decayColor = decay > 60 ? 'var(--success)' : decay > 30 ? 'var(--accent3)' : 'var(--danger)';
+    const scoreColor = w.recallScore >= 80 ? 'var(--success)' : w.recallScore >= 50 ? 'var(--accent)' : 'var(--danger)';
+    const statusPill = {
+      new: '<span class="pill pill-new">NEW</span>',
+      learning: '<span class="pill pill-learning">LEARNING</span>',
+      mastered: '<span class="pill pill-mastered">MASTERED</span>',
+      due: '<span class="pill pill-due">DUE</span>'
+    }[status];
+    const nextR = w.nextReview ? new Date(w.nextReview).toLocaleDateString('en-AU', {month:'short',day:'numeric'}) : '—';
+    return `<tr>
+      <td>
+        <div class="word-cell">${w.word}</div>
+        <div class="context-cell">${w.context || '—'}</div>
+      </td>
+      <td><span class="tag-domain">${w.domain}</span></td>
+      <td>
+        <span class="score-badge" style="color:${scoreColor};border-color:${scoreColor}">${w.recallScore}</span>
+      </td>
+      <td>
+        <div class="decay-bar"><div class="decay-fill" style="width:${decay}%;background:${decayColor}"></div></div>
+        <div style="font-size:10px;color:var(--muted);margin-top:3px">${decay}%</div>
+      </td>
+      <td><span class="interval-chip">${nextR}</span></td>
+      <td>${statusPill}</td>
+      <td style="color:var(--muted)">${w.reps || 0}×</td>
+      <td><button class="btn btn-danger" onclick="deleteWord(${w.id})">DEL</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── DRILL SESSION ────────────────────────────────────────────────────────────
+let drillQueue = [], drillIndex = 0;
+let drillSessionStart = 0, drillTimerInterval = null;
+let drillCorrect = 0, drillNewMastered = 0, drillMissed = [];
+let drillRangeDays = 3, drillMaxCards = 20;
+
+// Fisher-Yates shuffle
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function setRange(days, btn) {
+  drillRangeDays = days;
+  document.querySelectorAll('.range-btn[onclick^="setRange"]').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderDrillPanel();
+}
+
+function setMax(max, btn) {
+  drillMaxCards = max;
+  document.querySelectorAll('.range-btn[onclick^="setMax"]').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderDrillPanel();
+}
+
+function getWordsInRange() {
+  const cutoff = Date.now() - drillRangeDays * 86400000;
+  return state.words.filter(w => w.addedDate >= cutoff);
+}
+
+function startDrill() {
+  const pool = getWordsInRange();
+  if (pool.length === 0) { showToast('No words in this range — add words or expand range'); return; }
+  // Shuffle for randomness, then slice to max
+  drillQueue = shuffle(pool).slice(0, drillMaxCards);
+  drillIndex = 0; drillCorrect = 0; drillNewMastered = 0; drillMissed = [];
+  drillSessionStart = Date.now();
+  document.getElementById('drillStart').style.display = 'none';
+  document.getElementById('drillActive').style.display = 'block';
+  document.getElementById('sessionSummary').classList.remove('visible');
+  document.getElementById('drillCardTotal').textContent = drillQueue.length;
+  drillTimerInterval = setInterval(updateDrillTimer, 1000);
+  showDrillCard();
+}
+
+function showDrillCard() {
+  if (drillIndex >= drillQueue.length) { endDrill(); return; }
+  const w = drillQueue[drillIndex];
+
+  document.getElementById('drillCardNum').textContent = drillIndex + 1;
+  document.getElementById('drillProgress').style.width = ((drillIndex / drillQueue.length) * 100) + '%';
+
+  document.getElementById('drillPhaseLabel').textContent = 'RECALL CHALLENGE — What word fits this context?';
+  document.getElementById('drillPrompt').textContent = '"' + (w.context || 'Use this word in a professional context') + '"';
+  document.getElementById('drillSub').textContent = 'Domain: ' + w.domain.toUpperCase() + ' \u00b7 Added: ' + new Date(w.addedDate).toLocaleDateString('en-AU',{month:'short',day:'numeric'}) + ' \u00b7 Reps: ' + (w.reps||0) + '\u00d7';
+
+  // Reset input
+  const inp = document.getElementById('answerInput');
+  inp.value = '';
+  inp.style.borderColor = 'var(--border)';
+  inp.style.color = 'var(--text)';
+  document.getElementById('answerInputWrap').style.display = 'block';
+  document.getElementById('answerHint').textContent = 'Press ENTER to submit';
+  document.getElementById('drillReveal').style.display = 'none';
+  document.getElementById('drillReveal').textContent = '';
+  document.getElementById('drillButtons').innerHTML = '';
+
+  setTimeout(() => inp.focus(), 50);
+}
+
+function handleAnswerKey(e) {
+  if (e.key === 'Enter') submitAnswer();
+}
+
+function submitAnswer() {
+  const w = drillQueue[drillIndex];
+  const inp = document.getElementById('answerInput');
+  const typed = inp.value.trim().toLowerCase();
+  const correct = w.word.toLowerCase();
+
+  // Fuzzy: exact match or within 1 char edit distance (typo tolerance)
+  const isCorrect = typed === correct || editDistance(typed, correct) <= 1;
+  const grade = isCorrect ? (typed === correct ? 3 : 2) : 0;
+
+  if (isCorrect) {
+    inp.style.borderColor = 'var(--success)';
+    inp.style.color = 'var(--success)';
+    document.getElementById('answerHint').textContent = '\u2713 Correct!';
+    drillCorrect++;
+  } else {
+    inp.style.borderColor = 'var(--danger)';
+    inp.style.color = 'var(--danger)';
+    document.getElementById('answerHint').textContent = '\u2717 Incorrect';
+    drillMissed.push(w.word);
+  }
+
+  // Show the answer + example sentence
+  const rev = document.getElementById('drillReveal');
+  rev.style.display = 'block';
+  rev.style.borderColor = isCorrect ? 'var(--success)' : 'var(--danger)';
+  rev.style.color = isCorrect ? 'var(--success)' : 'var(--danger)';
+  rev.innerHTML = '\u2192 <strong>' + w.word + '</strong><br><span style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">"' + (w.sentence || 'No example sentence set') + '"</span>';
+
+  document.getElementById('answerInputWrap').style.display = 'none';
+  blurInput();
+
+  // SM-2 update
+  const prevScore = w.recallScore || 0;
+  sm2Update(w, grade);
+  if (w.recallScore >= 80 && prevScore < 80) drillNewMastered++;
+  const idx = state.words.findIndex(x => x.id === w.id);
+  if (idx !== -1) state.words[idx] = w;
+  save();
+
+  // Next button
+  const isLast = drillIndex >= drillQueue.length - 1;
+  document.getElementById('drillButtons').innerHTML = isLast
+    ? '<button class="drill-btn drill-btn-good" onclick="endDrill()">FINISH SESSION \u2192</button>'
+    : '<button class="drill-btn drill-btn-good" onclick="nextCard()">NEXT \u2192</button>' +
+      '<button class="drill-btn drill-btn-fail" onclick="endDrill()" style="margin-left:8px">END SESSION</button>';
+}
+
+function nextCard() {
+  drillIndex++;
+  showDrillCard();
+}
+
+// Levenshtein edit distance for typo tolerance
+function editDistance(a, b) {
+  const m = a.length, n = b.length;
+  const dp = Array.from({length: m+1}, (_, i) => Array.from({length: n+1}, (_, j) => i === 0 ? j : j === 0 ? i : 0));
+  for (let i = 1; i <= m; i++)
+    for (let j = 1; j <= n; j++)
+      dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1] : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+  return dp[m][n];
+}
+
+function updateDrillTimer() {
+  const elapsed = Math.floor((Date.now() - drillSessionStart) / 1000);
+  const m = Math.floor(elapsed / 60);
+  const s = elapsed % 60;
+  document.getElementById('drillTimer').textContent = m + ':' + s.toString().padStart(2,'0');
+  document.getElementById('drillSessionScore').textContent =
+    drillIndex > 0 ? Math.round((drillCorrect / drillIndex) * 100) + '%' : '—';
+}
+
+function endDrill() {
+  clearInterval(drillTimerInterval);
+  document.getElementById('drillActive').style.display = 'none';
+
+  // Count only cards actually attempted (drillIndex, not full queue length)
+  const attempted = Math.min(drillIndex + 1, drillQueue.length);
+  const acc = attempted > 0 ? Math.round((drillCorrect / attempted) * 100) : 0;
+  drillQueue = drillQueue.slice(0, attempted); // trim to what was actually done
+  document.getElementById('sum-drilled').textContent = attempted;
+  document.getElementById('sum-accuracy').textContent = acc + '%';
+  document.getElementById('sum-mastered').textContent = drillNewMastered;
+
+  const missedWrap = document.getElementById('sum-missed-wrap');
+  if (drillMissed.length > 0) {
+    missedWrap.style.display = 'block';
+    document.getElementById('sum-missed').innerHTML = drillMissed.map(w =>
+      '<span style="background:rgba(239,68,68,0.1);color:var(--danger);padding:2px 10px;border-radius:4px;margin:2px;display:inline-block;font-family:var(--font-display);font-weight:700">' + w + '</span>'
+    ).join(' ');
+  } else {
+    missedWrap.style.display = 'none';
+  }
+
+  document.getElementById('sessionSummary').classList.add('visible');
+
+  const today = new Date().toISOString().split('T')[0];
+  state.activityLog[today] = (state.activityLog[today] || 0) + drillQueue.length;
+  state.sessions.push({ date: Date.now(), drilled: drillQueue.length, accuracy: acc });
+
+  const lastDrill = state.lastDrillDate;
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  if (lastDrill === yesterday) state.streak = (state.streak || 0) + 1;
+  else if (lastDrill !== today) state.streak = 1;
+  state.lastDrillDate = today;
+  save();
+  renderAll();
+  showToast('Session logged \u2713');
+}
+
+function resetDrill() {
+  document.getElementById('drillStart').style.display = 'block';
+  document.getElementById('sessionSummary').classList.remove('visible');
+  renderDrillPanel();
+}
+
+function renderDrillPanel() {
+  const pool = getWordsInRange();
+  const queueSize = Math.min(pool.length, drillMaxCards);
+  document.getElementById('drill-due-count').textContent = pool.length;
+  document.getElementById('drill-queue-count').textContent = queueSize;
+  document.getElementById('drill-est-time').textContent = Math.max(1, Math.ceil(queueSize * 0.5));
+}
+
+// ─── CHARTS ──────────────────────────────────────────────────────────────────
+let charts = {};
+
+function destroyChart(id) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+
+function renderCharts() {
+  const words = state.words;
+
+  // Score distribution
+  destroyChart('score');
+  const ctx1 = document.getElementById('scoreChart').getContext('2d');
+  const buckets = [0,0,0,0,0]; // 0-19,20-39,40-59,60-79,80-100
+  words.forEach(w => {
+    const b = Math.min(4, Math.floor((w.recallScore||0) / 20));
+    buckets[b]++;
+  });
+  charts['score'] = new Chart(ctx1, {
+    type: 'bar',
+    data: {
+      labels: ['0–19','20–39','40–59','60–79','80–100'],
+      datasets: [{
+        data: buckets,
+        backgroundColor: ['#ef444440','#f59e0b40','#00e5ff30','#7c3aed40','#10b98140'],
+        borderColor: ['#ef4444','#f59e0b','#00e5ff','#7c3aed','#10b981'],
+        borderWidth: 2,
+        borderRadius: 4
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: '#2a2a38' }, ticks: { color: '#6b6b80', font: { family: 'Space Mono', size: 10 } } },
+        y: { grid: { color: '#2a2a38' }, ticks: { color: '#6b6b80', font: { family: 'Space Mono', size: 10 }, stepSize: 1 } }
+      }
+    }
+  });
+
+  // Domain breakdown
+  destroyChart('domain');
+  const ctx2 = document.getElementById('domainChart').getContext('2d');
+  const domains = {};
+  words.forEach(w => { domains[w.domain] = (domains[w.domain]||0) + 1; });
+  const domainKeys = Object.keys(domains);
+  const domainColors = ['#00e5ff','#7c3aed','#f59e0b','#10b981','#ef4444'];
+  charts['domain'] = new Chart(ctx2, {
+    type: 'doughnut',
+    data: {
+      labels: domainKeys,
+      datasets: [{
+        data: domainKeys.map(k => domains[k]),
+        backgroundColor: domainColors.map(c => c + '40'),
+        borderColor: domainColors,
+        borderWidth: 2
+      }]
+    },
+    options: {
+      plugins: {
+        legend: { position: 'right', labels: { color: '#6b6b80', font: { family: 'Space Mono', size: 10 }, boxWidth: 12 } }
+      }
+    }
+  });
+
+  // Trend chart (analytics)
+  destroyChart('trend');
+  const ctx3 = document.getElementById('trendChart').getContext('2d');
+  const sessions = state.sessions.slice(-30);
+  charts['trend'] = new Chart(ctx3, {
+    type: 'line',
+    data: {
+      labels: sessions.map(s => new Date(s.date).toLocaleDateString('en-AU', {month:'short',day:'numeric'})),
+      datasets: [{
+        label: 'Session Accuracy',
+        data: sessions.map(s => s.accuracy),
+        borderColor: '#00e5ff',
+        backgroundColor: 'rgba(0,229,255,0.05)',
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: '#00e5ff',
+        pointRadius: 4
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: '#2a2a38' }, ticks: { color: '#6b6b80', font: { family: 'Space Mono', size: 10 } } },
+        y: { min: 0, max: 100, grid: { color: '#2a2a38' }, ticks: { color: '#6b6b80', font: { family: 'Space Mono', size: 10 }, callback: v => v + '%' } }
+      }
+    }
+  });
+}
+
+function renderHeatmap() {
+  const grid = document.getElementById('heatmap');
+  grid.innerHTML = '';
+  const today = new Date();
+  for (let i = 89; i >= 0; i--) {
+    const d = new Date(today); d.setDate(d.getDate() - i);
+    const key = d.toISOString().split('T')[0];
+    const count = state.activityLog[key] || 0;
+    const intensity = count === 0 ? 0 : Math.min(1, count / 15);
+    const cell = document.createElement('div');
+    cell.className = 'velocity-cell';
+    const c = Math.round(intensity * 200);
+    cell.style.background = count ? `rgba(0,${c+55},255,${0.1 + intensity*0.8})` : 'var(--border)';
+    cell.innerHTML = `<span>${d.toLocaleDateString('en-AU',{month:'short',day:'numeric'})}: ${count} words</span>`;
+    grid.appendChild(cell);
+  }
+}
+
+// ─── ANALYTICS PANEL ─────────────────────────────────────────────────────────
+function renderAnalytics() {
+  const words = state.words;
+  if (words.length === 0) {
+    document.getElementById('ana-avg').textContent = '—';
+    document.getElementById('ana-weak').textContent = '—';
+    document.getElementById('ana-strong').textContent = '—';
+    document.getElementById('ana-reps').textContent = '—';
+    document.getElementById('anaBody').innerHTML = '';
+    return;
+  }
+  const avg = Math.round(words.reduce((a,w) => a + (w.recallScore||0), 0) / words.length);
+  const sorted = [...words].sort((a,b) => (a.recallScore||0) - (b.recallScore||0));
+  const totalReps = words.reduce((a,w) => a + (w.reps||0), 0);
+  document.getElementById('ana-avg').textContent = avg;
+  document.getElementById('ana-weak').textContent = sorted[0]?.word || '—';
+  document.getElementById('ana-strong').textContent = sorted[sorted.length-1]?.word || '—';
+  document.getElementById('ana-reps').textContent = totalReps;
+
+  const tbody = document.getElementById('anaBody');
+  tbody.innerHTML = [...words].sort((a,b) => (b.recallScore||0) - (a.recallScore||0)).map(w => {
+    const sc = w.recallScore || 0;
+    const col = sc >= 80 ? 'var(--success)' : sc >= 50 ? 'var(--accent)' : 'var(--danger)';
+    const verdict = sc >= 80 ? '🟢 Mastered' : sc >= 50 ? '🟡 Building' : '🔴 Weak';
+    const last = w.lastReviewed ? new Date(w.lastReviewed).toLocaleDateString('en-AU',{month:'short',day:'numeric'}) : 'Never';
+    return `<tr>
+      <td class="word-cell">${w.word}</td>
+      <td><span style="color:${col};font-family:var(--font-display);font-weight:800">${sc}</span></td>
+      <td><span class="interval-chip">${w.interval||1}d</span></td>
+      <td style="color:var(--muted)">${(w.easeFactor||2.5).toFixed(2)}</td>
+      <td style="color:var(--muted)">${w.reps||0}×</td>
+      <td style="color:var(--muted);font-size:11px">${last}</td>
+      <td style="font-size:11px">${verdict}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── DUE LIST ─────────────────────────────────────────────────────────────────
+function renderDueList() {
+  const due = getDueWords().slice(0, 8);
+  const el = document.getElementById('dueList');
+  if (due.length === 0) { el.innerHTML = '<span style="color:var(--success)">✓ All caught up!</span>'; return; }
+  el.innerHTML = due.map(w => {
+    const isOverdue = w.nextReview && w.nextReview <= Date.now();
+    return `<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border)">
+      <span style="font-family:var(--font-display);font-weight:700;min-width:120px;color:${isOverdue?'var(--danger)':'var(--text)'}">${w.word}</span>
+      <span class="tag-domain">${w.domain}</span>
+      <span style="font-size:11px;color:var(--muted)">${w.context||'—'}</span>
+      ${isOverdue ? '<span class="pill pill-due" style="margin-left:auto">OVERDUE</span>' : '<span class="pill pill-learning" style="margin-left:auto">DUE TODAY</span>'}
+    </div>`;
+  }).join('');
+}
+
+// ─── GLOBAL RENDER ────────────────────────────────────────────────────────────
+function renderAll() {
+  // KPIs
+  const words = state.words;
+  document.getElementById('kpi-total').textContent = words.length;
+  document.getElementById('kpi-due').textContent = getDueWords().filter(w => w.nextReview && w.nextReview <= Date.now()).length;
+  document.getElementById('kpi-mastered').textContent = words.filter(w => (w.recallScore||0) >= 80).length;
+  document.getElementById('kpi-sessions').textContent = state.sessions.length;
+
+  // Header
+  const start = new Date(state.startDate);
+  const dayN = Math.floor((Date.now() - start) / 86400000) + 1;
+  document.getElementById('dayCount').textContent = Math.min(90, dayN);
+  document.getElementById('streakCount').textContent = state.streak || 0;
+  document.getElementById('dateDisplay').textContent = new Date().toLocaleDateString('en-AU', {weekday:'short',month:'short',day:'numeric'});
+
+  renderBank();
+  renderDrillPanel();
+  renderDueList();
+  renderCharts();
+  renderHeatmap();
+  renderAnalytics();
+}
+
+// ─── TABS ─────────────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('panel-' + tab).classList.add('active');
+  if (tab === 'analytics') { renderAnalytics(); renderCharts(); }
+}
+
+// ─── TOAST ────────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ─── SWIPE GESTURES ──────────────────────────────────────────────────────────
+let touchStartX = 0, touchStartY = 0;
+
+document.addEventListener('touchstart', e => {
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+}, { passive: true });
+
+document.addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  const dy = e.changedTouches[0].clientY - touchStartY;
+  const panel = document.getElementById('drillActive');
+  if (!panel || panel.style.display === 'none') return;
+  // Only trigger if horizontal swipe > 60px and not primarily vertical
+  if (Math.abs(dx) < 60 || Math.abs(dy) > Math.abs(dx)) return;
+
+  const btns = document.getElementById('drillButtons');
+  // Only allow swipe after answer is submitted (buttons visible)
+  if (!btns.innerHTML.trim()) return;
+
+  if (dx > 0) {
+    // Swipe right = NEXT / FINISH
+    showSwipeHint('→ Next');
+    const nextBtn = btns.querySelector('[onclick="nextCard()"]');
+    const finishBtn = btns.querySelector('[onclick="endDrill()"][class*="good"]');
+    if (nextBtn) nextCard();
+    else if (finishBtn) endDrill();
+  } else {
+    // Swipe left = END SESSION
+    showSwipeHint('← End Session');
+    const endBtn = btns.querySelector('[onclick="endDrill()"][class*="fail"]');
+    if (endBtn) endDrill();
+    else if (btns.querySelector('[onclick="endDrill()"]')) endDrill();
+  }
+}, { passive: true });
+
+function showSwipeHint(msg) {
+  const el = document.getElementById('swipeHint');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 900);
+}
+
+// Dismiss keyboard after submit on mobile
+function blurInput() {
+  const inp = document.getElementById('answerInput');
+  if (inp) inp.blur();
+}
+
+// ─── EXPORT / IMPORT ──────────────────────────────────────────────────────────
+function exportData() {
+  const payload = JSON.stringify(state, null, 2);
+  const blob = new Blob([payload], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const date = new Date().toISOString().split('T')[0];
+  a.href = url;
+  a.download = `vis-wordbank-${date}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Word bank exported ✓');
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const imported = JSON.parse(e.target.result);
+      if (!imported.words || !Array.isArray(imported.words)) {
+        showToast('Invalid file — not a VIS export'); return;
+      }
+      const existing = new Set(state.words.map(w => w.word.toLowerCase()));
+      let added = 0;
+      imported.words.forEach(w => {
+        if (!existing.has(w.word.toLowerCase())) { state.words.push(w); added++; }
+      });
+      if (state.sessions.length === 0 && imported.sessions) state.sessions = imported.sessions;
+      if (!state.lastDrillDate && imported.lastDrillDate) {
+        state.lastDrillDate = imported.lastDrillDate;
+        state.streak = imported.streak || 0;
+      }
+      if (Object.keys(state.activityLog).length === 0 && imported.activityLog) state.activityLog = imported.activityLog;
+      if (imported.startDate && state.startDate > imported.startDate) state.startDate = imported.startDate;
+      save(); renderAll();
+      showToast('Imported ' + added + ' new words');
+    } catch(err) { showToast('Failed to read file'); }
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+renderAll();
+</script>
+</body>
+</html>
