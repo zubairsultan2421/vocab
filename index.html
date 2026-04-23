@@ -1603,52 +1603,33 @@ let driveConnected = false;
 let driveSyncTimeout = null;
 let driveTokenClient = null;
 let driveAutoPollInterval = null;
-let driveTokenExpiry = 0; // timestamp when token expires
+let driveTokenExpiry = 0;
+let drivePushPending = false; // queued push waiting for connection
 
-// Initialise the token client once
 function driveInitClient() {
   if (!window.google || driveTokenClient) return;
   driveTokenClient = google.accounts.oauth2.initTokenClient({
     client_id: DRIVE_CLIENT_ID,
     scope: DRIVE_SCOPES,
     prompt: '',
-    callback: async (resp) => {
-      if (resp.error) {
-        driveSetStatus('error', '☁ DRIVE');
-        if (resp.error !== 'access_denied') showToast('Drive auth failed: ' + resp.error);
-        return;
-      }
-      driveToken = resp.access_token;
-      driveTokenExpiry = Date.now() + (resp.expires_in - 60) * 1000; // refresh 1min early
-      driveConnected = true;
-      driveSetStatus('syncing', '↓ SYNCING...');
-      await drivePull();
-      startDriveAutoPoll();
-      showToast('Google Drive connected ✓');
-    }
+    callback: () => {} // overridden per-call
   });
 }
 
-// Get a fresh token silently if expired, or prompt if needed
 async function driveEnsureToken(forcePrompt = false) {
   return new Promise((resolve) => {
     if (!window.google) { resolve(false); return; }
     driveInitClient();
     if (!driveTokenClient) { resolve(false); return; }
-    if (!forcePrompt && driveToken && Date.now() < driveTokenExpiry) {
-      resolve(true); return; // token still valid
-    }
-    // Override callback temporarily for silent refresh
-    const prevCallback = driveTokenClient.callback;
+    if (!forcePrompt && driveToken && Date.now() < driveTokenExpiry) { resolve(true); return; }
     driveTokenClient.callback = (resp) => {
-      driveTokenClient.callback = prevCallback; // restore
       if (resp.error) { resolve(false); return; }
       driveToken = resp.access_token;
       driveTokenExpiry = Date.now() + (resp.expires_in - 60) * 1000;
       driveConnected = true;
       resolve(true);
     };
-    driveTokenClient.requestAccessToken({ prompt: forcePrompt ? 'consent' : 'none' });
+    driveTokenClient.requestAccessToken({ prompt: forcePrompt ? '' : 'none' });
   });
 }
 
@@ -1662,6 +1643,8 @@ function driveAuth() {
     driveConnected = true;
     driveSetStatus('syncing', '↓ SYNCING...');
     await drivePull();
+    // Flush any queued push (words added before connection)
+    if (drivePushPending) { drivePushPending = false; await drivePush(); }
     startDriveAutoPoll();
     showToast('Google Drive connected ✓');
   };
@@ -1679,7 +1662,16 @@ function driveSetStatus(s, label) {
   btn.textContent = label || '☁ DRIVE';
 }
 
-// Always list all appData files and match by name — avoids query encoding bugs
+// Push debounced — queues push if not yet connected
+function drivePushDebounced() {
+  if (!driveConnected) {
+    drivePushPending = true; // will push once connected
+    return;
+  }
+  clearTimeout(driveSyncTimeout);
+  driveSyncTimeout = setTimeout(drivePush, 1000);
+}
+
 async function driveResolveFileId() {
   const ok = await driveEnsureToken();
   if (!ok) return null;
@@ -1687,18 +1679,12 @@ async function driveResolveFileId() {
     'https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&fields=files(id,name,modifiedTime)',
     { headers: { 'Authorization': `Bearer ${driveToken}` } }
   );
-  if (res.status === 401) {
-    // Token rejected — force refresh and retry once
-    const refreshed = await driveEnsureToken(false);
-    if (!refreshed) return null;
-    return driveResolveFileId();
-  }
+  if (!res.ok) return null;
   const json = await res.json();
   const matches = (json.files || []).filter(f => f.name === DRIVE_FILE_NAME);
   if (matches.length === 0) { driveFileId = null; return null; }
   matches.sort((a, b) => new Date(b.modifiedTime) - new Date(a.modifiedTime));
   driveFileId = matches[0].id;
-  // Clean up duplicates
   for (let i = 1; i < matches.length; i++) {
     fetch(`https://www.googleapis.com/drive/v3/files/${matches[i].id}`, {
       method: 'DELETE', headers: { 'Authorization': `Bearer ${driveToken}` }
@@ -1707,16 +1693,9 @@ async function driveResolveFileId() {
   return driveFileId;
 }
 
-// Push state to Drive (debounced — waits 1s after last change)
-function drivePushDebounced() {
-  if (!driveConnected) return;
-  clearTimeout(driveSyncTimeout);
-  driveSyncTimeout = setTimeout(drivePush, 1000);
-}
-
 async function drivePush() {
   if (!driveConnected) return;
-  if (!state.words || state.words.length === 0) return; // never overwrite with empty
+  if (!state.words || state.words.length === 0) return;
   const ok = await driveEnsureToken();
   if (!ok) { driveSetStatus('error', '☁ TOKEN ERR'); return; }
   driveSetStatus('syncing', '↑ SAVING...');
@@ -1735,8 +1714,7 @@ async function drivePush() {
       body
     });
     if (res.status === 401) {
-      // Token expired mid-session — refresh and retry
-      driveToken = null;
+      driveToken = null; driveTokenExpiry = 0;
       const refreshed = await driveEnsureToken();
       if (refreshed) { await drivePush(); return; }
     }
@@ -1767,14 +1745,12 @@ async function drivePull() {
       { headers: { 'Authorization': `Bearer ${driveToken}` } }
     );
     if (res.status === 401) {
-      driveToken = null;
+      driveToken = null; driveTokenExpiry = 0;
       const refreshed = await driveEnsureToken();
       if (refreshed) { await drivePull(); return; }
     }
     if (!res.ok) throw new Error(`Pull failed: ${res.status}`);
     const cloudState = await res.json();
-    const cloudCount = cloudState.words ? cloudState.words.length : 0;
-    console.log('Pulled from Drive, cloud word count:', cloudCount);
 
     if (cloudState.words && cloudState.words.length > 0) {
       const localWords = new Map(state.words.map(w => [w.word.toLowerCase(), w]));
@@ -1888,15 +1864,15 @@ function driveAutoConnect() {
   if (!window.google) { setTimeout(driveAutoConnect, 800); return; }
   driveInitClient();
   if (!driveTokenClient) return;
-  const prev = driveTokenClient.callback;
   driveTokenClient.callback = async (resp) => {
-    driveTokenClient.callback = prev;
     if (resp.error) return; // silent fail — user clicks DRIVE manually
     driveToken = resp.access_token;
     driveTokenExpiry = Date.now() + (resp.expires_in - 60) * 1000;
     driveConnected = true;
     driveSetStatus('syncing', '↓ SYNCING...');
     await drivePull();
+    // Flush any words added before connection was ready
+    if (drivePushPending) { drivePushPending = false; await drivePush(); }
     startDriveAutoPoll();
   };
   driveTokenClient.requestAccessToken({ prompt: 'none' });
