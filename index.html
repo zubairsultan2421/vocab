@@ -1620,6 +1620,7 @@ function driveAuth() {
       localStorage.setItem('vis_drive_token', driveToken);
       showToast('Google Drive connected ✓');
       await drivePull(); // Pull latest on connect
+      startDriveAutoPoll(); // Begin 30s auto-sync polling
     }
   });
   client.requestAccessToken();
@@ -1636,11 +1637,11 @@ function driveSetStatus(state, label) {
   btn.textContent = label || '☁ DRIVE';
 }
 
-// Push state to Drive (debounced — waits 3s after last change)
+// Push state to Drive (debounced — waits 1s after last change)
 function drivePushDebounced() {
   if (!driveConnected || !driveToken) return;
   clearTimeout(driveSyncTimeout);
-  driveSyncTimeout = setTimeout(drivePush, 3000);
+  driveSyncTimeout = setTimeout(drivePush, 1000);
 }
 
 async function drivePush() {
@@ -1767,6 +1768,69 @@ function showDriveSetupGuide() {
 
 // Auto-push is called explicitly after each save() — no override needed
 
+// ─── AUTO-POLL: pull from Drive every 30s so all open browsers stay in sync ──
+let driveAutoPollInterval = null;
+
+function startDriveAutoPoll() {
+  if (driveAutoPollInterval) clearInterval(driveAutoPollInterval);
+  driveAutoPollInterval = setInterval(async () => {
+    if (!driveConnected || !driveToken) return;
+    if (document.getElementById('driveBtn').textContent.includes('SAVING')) return;
+    await drivePullSilent();
+  }, 30000);
+}
+
+async function drivePullSilent() {
+  if (!driveConnected || !driveToken) return;
+  try {
+    const list = await fetch(
+      `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name='${DRIVE_FILE_NAME}'`,
+      { headers: { 'Authorization': `Bearer ${driveToken}` } }
+    );
+    const listJson = await list.json();
+    if (!listJson.files || listJson.files.length === 0) return;
+    const fid = listJson.files[0].id;
+
+    const file = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fid}?alt=media`,
+      { headers: { 'Authorization': `Bearer ${driveToken}` } }
+    );
+    const cloudState = await file.json();
+
+    let changed = false;
+    if (cloudState.words && cloudState.words.length > 0) {
+      const localWords = new Map(state.words.map(w => [w.word.toLowerCase(), w]));
+      cloudState.words.forEach(w => {
+        const key = w.word.toLowerCase();
+        if (!localWords.has(key)) { localWords.set(key, w); changed = true; }
+        else {
+          const local = localWords.get(key);
+          if ((w.recallScore||0) > (local.recallScore||0)) { localWords.set(key, w); changed = true; }
+        }
+      });
+      state.words = Array.from(localWords.values());
+    }
+    if (cloudState.sessions && cloudState.sessions.length > state.sessions.length) {
+      state.sessions = cloudState.sessions; changed = true;
+    }
+    if (cloudState.activityLog) {
+      const before = JSON.stringify(state.activityLog);
+      Object.assign(state.activityLog, cloudState.activityLog);
+      if (JSON.stringify(state.activityLog) !== before) changed = true;
+    }
+    if (cloudState.streak > (state.streak||0)) { state.streak = cloudState.streak; changed = true; }
+
+    if (changed) {
+      save();
+      renderAll();
+      driveSetStatus('connected', '☁ SYNCED');
+      showToast('↓ New words synced from another device');
+    }
+  } catch(e) {
+    console.log('Auto-poll error:', e.message);
+  }
+}
+
 // ─── EXPORT / IMPORT ──────────────────────────────────────────────────────────
 function exportData() {
   const payload = JSON.stringify(state, null, 2);
@@ -1832,6 +1896,7 @@ function driveAutoConnect() {
         driveConnected = true;
         driveSetStatus('syncing', '↓ SYNCING...');
         await drivePull();
+        startDriveAutoPoll(); // Begin 30s auto-sync polling
       }
     });
     client.requestAccessToken({ prompt: 'none' });
