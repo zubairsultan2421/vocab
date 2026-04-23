@@ -1620,7 +1620,7 @@ function driveAuth() {
       localStorage.setItem('vis_drive_token', driveToken);
       showToast('Google Drive connected ✓');
       await drivePull(); // Pull latest on connect
-      startDriveAutoPoll(); // Begin 30s auto-sync polling
+      startDriveAutoPoll();
     }
   });
   client.requestAccessToken();
@@ -1644,34 +1644,101 @@ function drivePushDebounced() {
   driveSyncTimeout = setTimeout(drivePush, 1000);
 }
 
+// Auto-pull every 30s so other open browsers see changes automatically
+let driveAutoPollInterval = null;
+function startDriveAutoPoll() {
+  if (driveAutoPollInterval) clearInterval(driveAutoPollInterval);
+  driveAutoPollInterval = setInterval(() => {
+    if (driveConnected && driveToken) drivePull();
+  }, 30000);
+}
+
+async function driveResolveFileId() {
+  // Always search by name — never trust localStorage across browsers
+  const list = await fetch(
+    `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name='${DRIVE_FILE_NAME}'&fields=files(id)`,
+    { headers: { 'Authorization': `Bearer ${driveToken}` } }
+  );
+  const listJson = await list.json();
+  if (listJson.files && listJson.files.length > 0) {
+    driveFileId = listJson.files[0].id;
+    // If duplicates exist, delete the extras
+    for (let i = 1; i < listJson.files.length; i++) {
+      fetch(`https://www.googleapis.com/drive/v3/files/${listJson.files[i].id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${driveToken}` }
+      });
+    }
+  } else {
+    driveFileId = null;
+  }
+  return driveFileId;
+}
+
 async function drivePush() {
   if (!driveConnected || !driveToken) return;
   driveSetStatus('syncing', '↑ SAVING...');
   try {
     const body = JSON.stringify(state);
+    // Always resolve the real file ID from Drive (fixes cross-browser localStorage mismatch)
+    await driveResolveFileId();
+
     if (driveFileId) {
-      // Update existing file
-      await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`, {
-        method: 'PATCH',
-        headers: { 'Authorization': `Bearer ${driveToken}`, 'Content-Type': 'application/json' },
-        body
-      });
+      // Update existing file content using multipart upload
+      const boundary = 'vis_boundary';
+      const multipart = [
+        `--${boundary}`,
+        'Content-Type: application/json',
+        '',
+        JSON.stringify({ name: DRIVE_FILE_NAME }),
+        `--${boundary}`,
+        'Content-Type: application/json',
+        '',
+        body,
+        `--${boundary}--`
+      ].join('\r\n');
+
+      const res = await fetch(
+        `https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=multipart`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${driveToken}`,
+            'Content-Type': `multipart/related; boundary=${boundary}`
+          },
+          body: multipart
+        }
+      );
+      if (!res.ok) throw new Error(`Push failed: ${res.status}`);
     } else {
-      // Create new file in appDataFolder
-      const meta = await fetch('https://www.googleapis.com/drive/v3/files', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${driveToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: DRIVE_FILE_NAME, parents: ['appDataFolder'] })
-      });
-      const metaJson = await meta.json();
-      driveFileId = metaJson.id;
-      localStorage.setItem('vis_drive_file_id', driveFileId);
-      // Upload content
-      await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`, {
-        method: 'PATCH',
-        headers: { 'Authorization': `Bearer ${driveToken}`, 'Content-Type': 'application/json' },
-        body
-      });
+      // Create new file in appDataFolder using multipart upload
+      const boundary = 'vis_boundary';
+      const multipart = [
+        `--${boundary}`,
+        'Content-Type: application/json',
+        '',
+        JSON.stringify({ name: DRIVE_FILE_NAME, parents: ['appDataFolder'] }),
+        `--${boundary}`,
+        'Content-Type: application/json',
+        '',
+        body,
+        `--${boundary}--`
+      ].join('\r\n');
+
+      const res = await fetch(
+        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${driveToken}`,
+            'Content-Type': `multipart/related; boundary=${boundary}`
+          },
+          body: multipart
+        }
+      );
+      if (!res.ok) throw new Error(`Create failed: ${res.status}`);
+      const json = await res.json();
+      driveFileId = json.id;
     }
     driveSetStatus('connected', '☁ SYNCED');
   } catch(e) {
@@ -1684,26 +1751,22 @@ async function drivePull() {
   if (!driveConnected || !driveToken) return;
   driveSetStatus('syncing', '↓ LOADING...');
   try {
-    // Find file
-    const list = await fetch(
-      `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name='${DRIVE_FILE_NAME}'`,
-      { headers: { 'Authorization': `Bearer ${driveToken}` } }
-    );
-    const listJson = await list.json();
-    if (!listJson.files || listJson.files.length === 0) {
+    // Always resolve canonical file ID (handles cross-browser localStorage mismatch)
+    await driveResolveFileId();
+
+    if (!driveFileId) {
       // No cloud file yet — push local data up
       driveSetStatus('connected', '☁ SYNCED');
       await drivePush();
       return;
     }
-    driveFileId = listJson.files[0].id;
-    localStorage.setItem('vis_drive_file_id', driveFileId);
 
     // Download content
     const file = await fetch(
       `https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`,
       { headers: { 'Authorization': `Bearer ${driveToken}` } }
     );
+    if (!file.ok) throw new Error(`Pull failed: ${file.status}`);
     const cloudState = await file.json();
 
     // Merge: take whichever has more words + merge sessions
@@ -1767,69 +1830,6 @@ function showDriveSetupGuide() {
 }
 
 // Auto-push is called explicitly after each save() — no override needed
-
-// ─── AUTO-POLL: pull from Drive every 30s so all open browsers stay in sync ──
-let driveAutoPollInterval = null;
-
-function startDriveAutoPoll() {
-  if (driveAutoPollInterval) clearInterval(driveAutoPollInterval);
-  driveAutoPollInterval = setInterval(async () => {
-    if (!driveConnected || !driveToken) return;
-    if (document.getElementById('driveBtn').textContent.includes('SAVING')) return;
-    await drivePullSilent();
-  }, 30000);
-}
-
-async function drivePullSilent() {
-  if (!driveConnected || !driveToken) return;
-  try {
-    const list = await fetch(
-      `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name='${DRIVE_FILE_NAME}'`,
-      { headers: { 'Authorization': `Bearer ${driveToken}` } }
-    );
-    const listJson = await list.json();
-    if (!listJson.files || listJson.files.length === 0) return;
-    const fid = listJson.files[0].id;
-
-    const file = await fetch(
-      `https://www.googleapis.com/drive/v3/files/${fid}?alt=media`,
-      { headers: { 'Authorization': `Bearer ${driveToken}` } }
-    );
-    const cloudState = await file.json();
-
-    let changed = false;
-    if (cloudState.words && cloudState.words.length > 0) {
-      const localWords = new Map(state.words.map(w => [w.word.toLowerCase(), w]));
-      cloudState.words.forEach(w => {
-        const key = w.word.toLowerCase();
-        if (!localWords.has(key)) { localWords.set(key, w); changed = true; }
-        else {
-          const local = localWords.get(key);
-          if ((w.recallScore||0) > (local.recallScore||0)) { localWords.set(key, w); changed = true; }
-        }
-      });
-      state.words = Array.from(localWords.values());
-    }
-    if (cloudState.sessions && cloudState.sessions.length > state.sessions.length) {
-      state.sessions = cloudState.sessions; changed = true;
-    }
-    if (cloudState.activityLog) {
-      const before = JSON.stringify(state.activityLog);
-      Object.assign(state.activityLog, cloudState.activityLog);
-      if (JSON.stringify(state.activityLog) !== before) changed = true;
-    }
-    if (cloudState.streak > (state.streak||0)) { state.streak = cloudState.streak; changed = true; }
-
-    if (changed) {
-      save();
-      renderAll();
-      driveSetStatus('connected', '☁ SYNCED');
-      showToast('↓ New words synced from another device');
-    }
-  } catch(e) {
-    console.log('Auto-poll error:', e.message);
-  }
-}
 
 // ─── EXPORT / IMPORT ──────────────────────────────────────────────────────────
 function exportData() {
@@ -1896,7 +1896,7 @@ function driveAutoConnect() {
         driveConnected = true;
         driveSetStatus('syncing', '↓ SYNCING...');
         await drivePull();
-        startDriveAutoPoll(); // Begin 30s auto-sync polling
+        startDriveAutoPoll();
       }
     });
     client.requestAccessToken({ prompt: 'none' });
