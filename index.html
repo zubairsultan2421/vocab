@@ -9,22 +9,24 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="VIS">
 <title>VIS — Vocabulary Intelligence System</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0a0a0f;
-    --surface: #111118;
-    --surface2: #1a1a24;
-    --border: #2a2a38;
-    --accent: #00e5ff;
-    --accent2: #7c3aed;
-    --accent3: #f59e0b;
-    --danger: #ef4444;
-    --success: #10b981;
-    --text: #e8e8f0;
-    --muted: #6b6b80;
-    --font-display: 'Syne', sans-serif;
-    --font-mono: 'Space Mono', monospace;
+    --bg: #0d0d14;
+    --surface: #13131e;
+    --surface2: #1c1c2a;
+    --border: #252535;
+    --accent: #38bdf8;
+    --accent2: #818cf8;
+    --accent3: #fbbf24;
+    --danger: #f87171;
+    --success: #34d399;
+    --text: #f0f0f8;
+    --text2: #c4c4d4;
+    --muted: #6b6b85;
+    --font-display: 'DM Sans', sans-serif;
+    --font-body: 'Inter', sans-serif;
+    --font-mono: 'DM Mono', monospace;
   }
 
   * { margin:0; padding:0; box-sizing:border-box; }
@@ -32,9 +34,13 @@
   body {
     background: var(--bg);
     color: var(--text);
-    font-family: var(--font-mono);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.6;
     min-height: 100vh;
     overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   /* Grid background */
@@ -64,15 +70,16 @@
   .logo {
     font-family: var(--font-display);
     font-weight: 800;
-    font-size: 22px;
-    letter-spacing: -0.5px;
+    font-size: 24px;
+    letter-spacing: -1px;
   }
   .logo span { color: var(--accent); }
   .header-meta {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--muted);
     text-align: right;
-    line-height: 1.8;
+    line-height: 1.7;
+    font-family: var(--font-body);
   }
   .header-meta strong { color: var(--accent3); }
 
@@ -92,12 +99,13 @@
     background: none;
     border: none;
     color: var(--muted);
-    font-family: var(--font-mono);
-    font-size: 11px;
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 600;
     cursor: pointer;
     border-radius: 6px;
     transition: all 0.2s;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.02em;
     text-transform: uppercase;
   }
   .tab.active {
@@ -136,9 +144,9 @@
   .kpi.amber::before { background: var(--accent3); }
   .kpi.purple::before { background: var(--accent2); }
   .kpi.green::before { background: var(--success); }
-  .kpi-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; }
-  .kpi-value { font-family: var(--font-display); font-size: 28px; font-weight: 800; line-height: 1; }
-  .kpi-sub { font-size: 10px; color: var(--muted); margin-top: 4px; }
+  .kpi-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; font-family: var(--font-body); font-weight: 600; }
+  .kpi-value { font-family: var(--font-display); font-size: 30px; font-weight: 800; line-height: 1; letter-spacing: -1px; }
+  .kpi-sub { font-size: 11px; color: var(--muted); margin-top: 5px; font-family: var(--font-body); }
 
   /* Section headers */
   .section-header {
@@ -148,8 +156,8 @@
     margin-bottom: 14px;
   }
   .section-title {
-    font-family: var(--font-display);
-    font-size: 13px;
+    font-family: var(--font-body);
+    font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.1em;
@@ -172,21 +180,23 @@
   }
   .field label {
     display: block;
-    font-size: 10px;
+    font-size: 11px;
     color: var(--muted);
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.07em;
     margin-bottom: 6px;
+    font-family: var(--font-body);
+    font-weight: 600;
   }
   .field input, .field select, .field textarea {
     width: 100%;
     background: var(--bg);
     border: 1px solid var(--border);
     color: var(--text);
-    font-family: var(--font-mono);
-    font-size: 12px;
-    padding: 9px 12px;
-    border-radius: 6px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    padding: 10px 14px;
+    border-radius: 8px;
     outline: none;
     transition: border-color 0.2s;
   }
@@ -197,13 +207,13 @@
   .btn {
     padding: 9px 20px;
     border: none;
-    border-radius: 6px;
-    font-family: var(--font-mono);
+    border-radius: 8px;
+    font-family: var(--font-body);
     font-size: 12px;
     cursor: pointer;
     transition: all 0.2s;
     font-weight: 700;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.03em;
   }
   .btn-primary {
     background: var(--accent);
@@ -234,21 +244,25 @@
     letter-spacing: 0.1em;
     padding: 8px 12px;
     border-bottom: 1px solid var(--border);
+    font-family: var(--font-body);
+    font-weight: 700;
   }
   .word-table td {
-    padding: 12px;
-    border-bottom: 1px solid rgba(42,42,56,0.5);
-    font-size: 12px;
+    padding: 14px 12px;
+    border-bottom: 1px solid rgba(37,37,53,0.6);
+    font-size: 13px;
     vertical-align: middle;
+    font-family: var(--font-body);
   }
   .word-table tr:hover td { background: rgba(255,255,255,0.02); }
   .word-cell {
     font-family: var(--font-display);
     font-weight: 700;
-    font-size: 14px;
+    font-size: 15px;
     color: var(--text);
+    letter-spacing: -0.3px;
   }
-  .context-cell { color: var(--muted); font-size: 11px; max-width: 200px; }
+  .context-cell { color: var(--muted); font-size: 12px; max-width: 200px; font-family: var(--font-body); line-height: 1.5; }
 
   /* Decay bar */
   .decay-bar {
@@ -281,12 +295,13 @@
   /* Status pill */
   .pill {
     display: inline-block;
-    padding: 3px 8px;
-    border-radius: 4px;
+    padding: 3px 9px;
+    border-radius: 5px;
     font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.07em;
+    font-family: var(--font-body);
   }
   .pill-new { background: rgba(0,229,255,0.1); color: var(--accent); }
   .pill-learning { background: rgba(245,158,11,0.1); color: var(--accent3); }
@@ -317,25 +332,29 @@
     pointer-events: none;
   }
   .drill-phase {
-    font-size: 10px;
+    font-size: 11px;
     text-transform: uppercase;
-    letter-spacing: 0.15em;
+    letter-spacing: 0.12em;
     color: var(--muted);
     margin-bottom: 20px;
+    font-family: var(--font-body);
+    font-weight: 600;
   }
   .drill-prompt {
     font-family: var(--font-display);
-    font-size: 32px;
-    font-weight: 800;
+    font-size: 28px;
+    font-weight: 700;
     margin-bottom: 12px;
-    line-height: 1.2;
+    line-height: 1.3;
+    letter-spacing: -0.5px;
   }
   .drill-sub {
-    font-size: 12px;
+    font-size: 13px;
     color: var(--muted);
     max-width: 400px;
     line-height: 1.7;
     margin-bottom: 24px;
+    font-family: var(--font-body);
   }
   .drill-reveal {
     background: var(--surface2);
@@ -352,9 +371,9 @@
   .drill-buttons { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
   .drill-btn {
     padding: 10px 22px;
-    border-radius: 6px;
-    font-family: var(--font-mono);
-    font-size: 12px;
+    border-radius: 8px;
+    font-family: var(--font-body);
+    font-size: 13px;
     font-weight: 700;
     cursor: pointer;
     border: none;
@@ -479,9 +498,10 @@
     border: 1px solid var(--accent);
     color: var(--accent);
     padding: 12px 20px;
-    border-radius: 8px;
-    font-size: 12px;
-    font-weight: 700;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: var(--font-body);
     z-index: 1000;
     transform: translateY(80px);
     opacity: 0;
@@ -508,11 +528,13 @@
   }
 
   .interval-chip {
-    font-size: 10px;
+    font-size: 11px;
     color: var(--muted);
     background: var(--surface2);
-    padding: 2px 7px;
-    border-radius: 3px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-family: var(--font-body);
+    font-weight: 500;
   }
 
   .action-row { display: flex; gap: 6px; align-items: center; }
@@ -521,9 +543,10 @@
     background: var(--surface2);
     border: 1px solid var(--border);
     color: var(--muted);
-    font-family: var(--font-mono);
-    font-size: 11px;
-    border-radius: 5px;
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 6px;
     cursor: pointer;
     transition: all 0.15s;
   }
@@ -677,8 +700,8 @@
       <label class="btn btn-ghost" style="font-size:10px;padding:7px 12px;white-space:nowrap;cursor:pointer">
         ⬆ IMPORT<input type="file" accept=".json" onchange="importData(event)" style="display:none">
       </label>
-      <button id="driveBtn" class="btn btn-ghost" style="font-size:10px;padding:7px 12px;white-space:nowrap" onclick="driveAuth()">☁ DRIVE</button>
-      <button id="driveSyncBtn" class="btn btn-ghost" style="font-size:10px;padding:7px 12px;white-space:nowrap;display:none" onclick="drivePull()">↓ SYNC</button>
+      <button id="driveBtn" class="btn btn-ghost" style="font-size:11px;padding:7px 12px;white-space:nowrap" onclick="driveAuth()">☁ DRIVE</button>
+      <button id="driveSyncBtn" class="btn btn-ghost" style="font-size:11px;padding:7px 12px;white-space:nowrap;display:none" onclick="drivePull()">↓ SYNC</button>
     </div>
   </div>
 
@@ -1621,10 +1644,9 @@ function scheduleTokenRefresh(expiresIn) {
   driveTokenRefreshTimer = setTimeout(() => {
     if (!driveConnected || !driveTokenClient) return;
     driveTokenClient.callback = (resp) => {
-      if (resp.error) { console.log('Silent refresh failed, will need manual reconnect'); driveConnected = false; driveSetStatus('error', '☁ RECONNECT'); return; }
+      if (resp.error) { driveConnected = false; driveSetStatus('error', '☁ RECONNECT'); return; }
       driveToken = resp.access_token;
       scheduleTokenRefresh(resp.expires_in);
-      console.log('Token refreshed silently');
     };
     driveTokenClient.requestAccessToken({ prompt: 'none' });
   }, refreshIn);
@@ -1633,7 +1655,6 @@ function scheduleTokenRefresh(expiresIn) {
 function driveAuth() {
   if (!window.google) { showToast('⚠ Google script not loaded yet'); return; }
   driveInitClient();
-  // Snapshot local word count before we pull, so we know if we need to push after
   const localCountBeforeSync = state.words.length;
   driveTokenClient.callback = async (resp) => {
     if (resp.error) { driveSetStatus('error', '☁ DRIVE'); showToast('Drive auth failed'); return; }
@@ -1641,12 +1662,8 @@ function driveAuth() {
     driveConnected = true;
     scheduleTokenRefresh(resp.expires_in);
     driveSetStatus('syncing', '↓ SYNCING...');
-    // Pull first to get cloud words
     await drivePull();
-    // If we had local words that may not be in Drive, push to make sure
-    if (localCountBeforeSync > 0) {
-      await drivePush();
-    }
+    if (localCountBeforeSync > 0) await drivePush();
     startDriveAutoPoll();
     showToast('Google Drive connected ✓');
   };
@@ -1660,7 +1677,7 @@ function driveSetStatus(s, label) {
   if (s === 'connected') { btn.classList.add('connected'); if (syncBtn) syncBtn.style.display = 'inline-block'; }
   if (s === 'syncing')   { btn.classList.add('syncing');   if (syncBtn) syncBtn.style.display = 'inline-block'; }
   if (s === 'error')     {                                  if (syncBtn) syncBtn.style.display = 'none'; }
-  btn.style.fontSize = '10px'; btn.style.padding = '7px 12px'; btn.style.whiteSpace = 'nowrap';
+  btn.style.fontSize = '11px'; btn.style.padding = '7px 12px'; btn.style.whiteSpace = 'nowrap';
   btn.textContent = label || '☁ DRIVE';
 }
 
@@ -1711,7 +1728,6 @@ async function drivePush() {
     if (!res.ok) { const t = await res.text(); throw new Error(`${res.status}: ${t}`); }
     const json = await res.json();
     if (!driveFileId) driveFileId = json.id;
-    console.log('Push success, words:', state.words.length);
     driveSetStatus('connected', '☁ SYNCED');
   } catch(e) {
     driveSetStatus('error', '☁ ERROR');
@@ -1724,17 +1740,13 @@ async function drivePull() {
   driveSetStatus('syncing', '↓ LOADING...');
   try {
     await driveResolveFileId();
-    if (!driveFileId) {
-      driveSetStatus('connected', '☁ SYNCED');
-      return;
-    }
+    if (!driveFileId) { driveSetStatus('connected', '☁ SYNCED'); return; }
     const res = await fetch(
       `https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`,
       { headers: { 'Authorization': `Bearer ${driveToken}` } }
     );
     if (!res.ok) throw new Error(`Pull failed: ${res.status}`);
     const cloudState = await res.json();
-    console.log('Pull success, cloud words:', cloudState.words ? cloudState.words.length : 0);
 
     if (cloudState.words && cloudState.words.length > 0) {
       const localWords = new Map(state.words.map(w => [w.word.toLowerCase(), w]));
@@ -1850,7 +1862,7 @@ function driveAutoConnect() {
   if (!driveTokenClient) return;
   const localCountBeforeSync = state.words.length;
   driveTokenClient.callback = async (resp) => {
-    if (resp.error) return; // silent fail — user clicks DRIVE manually
+    if (resp.error) return;
     driveToken = resp.access_token;
     driveConnected = true;
     scheduleTokenRefresh(resp.expires_in);
